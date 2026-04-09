@@ -2,7 +2,17 @@
 
 > 为 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 打造的实用 Skill，开箱即用。
 
-## 目录
+## 安装
+
+```bash
+npx skills add Backtthefuture/huangshu
+```
+
+按提示选择要安装的 Skill、安装范围（全局 / 项目）和目标 Agent 即可。
+
+> 支持 Claude Code、Cursor、GitHub Copilot 等 40+ AI 编程助手，由 [Vercel Labs](https://github.com/vercel-labs/agent-skills) 维护。
+
+## Skill 目录
 
 | Skill | 说明 | 使用场景 |
 |-------|------|---------|
@@ -30,31 +40,29 @@
 请 Taleb 和 Musk 聊聊我这个 all-in 的想法
 ```
 
-### 安装方法
+### 手动安装
 
-将 `skills/advisory-board/` 文件夹复制到你的项目中：
+如果不想用 `npx skills`，也可以手动操作：
 
 ```bash
-# 方式一：直接克隆整个仓库
+# 方式一：克隆仓库后复制
 git clone https://github.com/Backtthefuture/huangshu.git
 cp -r huangshu/skills/advisory-board your-project/skills/
 
-# 方式二：只下载私董会 Skill
-curl -o SKILL.md https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/advisory-board/SKILL.md
+# 方式二：只下载单个 Skill
 mkdir -p skills/advisory-board
-mv SKILL.md skills/advisory-board/
+curl -o skills/advisory-board/SKILL.md \
+  https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/advisory-board/SKILL.md
 ```
 
-确保你的项目根目录有 `CLAUDE.md`，并在其中引用该 Skill：
+然后在项目根目录的 `CLAUDE.md` 中引用：
 
 ```markdown
 ## Skills
 - 私董会（advisory-board）：`skills/advisory-board/SKILL.md`
 ```
 
-### 运行效果示例
-
-讨论流程：
+### 运行效果
 
 ```
 Phase 0  议题接收     →  复述核心问题，判断议题类型
