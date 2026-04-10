@@ -29,6 +29,7 @@ sys.path.insert(0, str(HERE))
 import config  # noqa: E402
 import doctor  # noqa: E402
 from personalities import DIMENSIONS  # noqa: E402
+from util import sanitize_name  # noqa: E402
 
 
 # ============= URL / handle 解析 =============
@@ -141,10 +142,23 @@ def cmd_fetch(args: argparse.Namespace) -> int:
             return 2
         print(f"📡 抓取即刻 @{username} ...", file=sys.stderr)
         data = fetch_user(username, access, refresh, limit=args.limit)
-        out = out_dir / f"{username}_raw.json"
+        # 用真实 screen_name 当文件名(jike profile 可能是 screenName 驼峰)
+        profile = data.get("profile", {}) or {}
+        screen = (
+            profile.get("screen_name")
+            or profile.get("screenName")
+            or profile.get("nickname")
+            or username
+        )
+        # 把规范化后的 screen_name + platform 写回 profile,后续 make_card 直接读
+        profile["screen_name"] = screen
+        profile.setdefault("platform", "jike")
+        data["profile"] = profile
+        stem = sanitize_name(screen, fallback=sanitize_name(username))
+        out = out_dir / f"{stem}-raw.json"
         out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         n = data.get("stats", {}).get("fetched", 0)
-        print(f"✓ 抓到 {n} 条动态")
+        print(f"✓ 抓到 {n} 条动态 ({screen})")
         print(f"  → {out}")
         return 0
 
@@ -166,11 +180,16 @@ def cmd_fetch(args: argparse.Namespace) -> int:
         fx.COOKIES_PATH = cookies_path
         print(f"📡 抓取 X @{handle} ...", file=sys.stderr)
         data = asyncio.run(fetch_user_async(handle, limit=args.limit, by_id=by_id))
-        name = (data.get("profile", {}).get("screen_name") or handle).lower()
-        out = out_dir / f"{name}_raw.json"
+        profile = data.get("profile", {}) or {}
+        screen = profile.get("screen_name") or handle
+        profile["screen_name"] = screen
+        profile.setdefault("platform", "x")
+        data["profile"] = profile
+        stem = sanitize_name(screen, fallback=sanitize_name(handle))
+        out = out_dir / f"{stem}-raw.json"
         out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         n = data.get("stats", {}).get("fetched", 0)
-        print(f"✓ 抓到 {n} 条推文")
+        print(f"✓ 抓到 {n} 条推文 ({screen})")
         print(f"  → {out}")
         return 0
 
@@ -196,15 +215,22 @@ def cmd_finalize(args: argparse.Namespace) -> int:
     )
 
     p = data["personality"]
+    profile = data.get("profile", {}) or {}
+    screen = profile.get("screen_name") or profile.get("screenName") or "sbti"
+    stem = sanitize_name(screen)
+    # 卡片文件名: <name>-<CODE>-<中文名>.{html,png}
+    out_stem = f"{stem}-{p['code']}-{p['cn_name']}"
+    html_path = scores_path.parent / f"{out_stem}.html"
+
     print("━" * 50)
-    print(f"  🎭 {data.get('profile', {}).get('screen_name', '?')}")
+    print(f"  🎭 {screen}")
     print(f"  人格: 【{p['code']}】· {p['cn_name']}  {p['mascot']}")
     print(f"  标语: 「{p['tagline']}」")
     print(f"  匹配: {p['similarity']}%")
     print(f"  模式: {data['pattern']}")
     print("━" * 50)
 
-    html_path = render_html(scores_path)
+    html_path = render_html(scores_path, out_path=html_path)
     print(f"✓ HTML 已生成: {html_path}")
 
     # PNG (optional)

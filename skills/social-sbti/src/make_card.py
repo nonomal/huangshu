@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from personalities import DIMENSION_GROUPS, DIMENSIONS, PERSONALITIES
 from match import enrich
+from util import sanitize_name
 
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "templates" / "card.html"
 
@@ -98,7 +99,9 @@ def render(scores_path: Path, out_path: Path | None = None) -> Path:
     )
     impression = data.get("overall_impression") or ""
 
-    file_stem = scores_path.stem.replace("_scores", "").replace("_sbti", "")
+    # 新的 file_stem 规则:<sanitized screen_name>-<CODE>-<中文名>
+    # 文件名用,用户分享前缀用,都走这个
+    file_stem = f"{sanitize_name(screen_name)}-{pers['code']}-{pers['cn_name']}"
 
     replacements = {
         "{{SCREEN_NAME}}": _esc(screen_name),
@@ -121,7 +124,7 @@ def render(scores_path: Path, out_path: Path | None = None) -> Path:
         tpl = tpl.replace(k, v)
 
     if out_path is None:
-        out_path = scores_path.with_name(f"{file_stem}-sbti.html")
+        out_path = scores_path.with_name(f"{file_stem}.html")
     out_path.write_text(tpl, encoding="utf-8")
     return out_path
 

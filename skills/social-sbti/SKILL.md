@@ -243,9 +243,11 @@ output 文件路径。
 "$SBTI_HOME/bin/sbti" fetch "$PLATFORM" "$TARGET" --limit 200
 ```
 
-这会把数据写到 `./sbti-output/<name>_raw.json`(用户项目根下)。
+这会把数据写到 `./sbti-output/<name>-raw.json`(用户项目根下)。`<name>` 是
+**真实 screen_name 的清洗版**(不是输入 URL 里的 UUID/username),由 fetcher 从
+profile 里取。
 
-**解析返回**: fetcher 会打印最终路径,记下来叫 `RAW_FILE`。
+**解析返回**: fetcher 会打印最终路径,**原样记下来**叫 `RAW_FILE`。不要自己瞎猜。
 
 **如果失败**:
 
@@ -304,7 +306,10 @@ output 文件路径。
    }
    ```
 
-   路径: `./sbti-output/<name>_scores.json`(和 raw.json 同目录,同一个 `<name>`)。
+   **路径规则**: 和 raw.json **同目录、同前缀**,后缀从 `-raw` 换成 `-scores`。
+   比如:
+   - raw 叫 `sbti-output/AI产品黄叔-raw.json`
+   - scores 就叫 `sbti-output/AI产品黄叔-scores.json`
 
 8. **可选字段**: 如果动态里非常明显地大量提"喝酒/白酒/灌杯",加 `"drunk": true`,
    会触发 DRUNK 彩蛋。
@@ -316,8 +321,10 @@ output 文件路径。
 - [ ] confidence < 0.4 的已经回退到 M
 - [ ] quotes 是真实原文,没编
 - [ ] personality_description 带了具体事实
+- [ ] `profile.screen_name` 字段**务必**从 raw.json 复制过来(不要自己编,
+      finalize 要用它算 HTML/PNG 的文件名)
 
-记下 scores.json 路径: `SCORES_FILE=./sbti-output/<name>_scores.json`
+记下 scores.json 路径: `SCORES_FILE=<raw.json 同目录>/<同前缀>-scores.json`
 
 ---
 
@@ -333,6 +340,10 @@ output 文件路径。
 1. `match.py` → 匹配 27 人格模板,写回 scores.json 补上 `pattern` + `personality`
 2. `make_card.py` → 生成 HTML 卡片
 3. `render_png.py` → 用 playwright 截成 PNG(没装就跳过,会给提示)
+
+**产物文件名**:`<screen_name>-<CODE>-<中文名>.{html,png}`
+比如 `AI产品黄叔-CTRL-拿捏者.html` / `AI产品黄叔-CTRL-拿捏者.png`。终端会原样
+打印出路径,直接用。
 
 **如果 PNG 失败**: 继续,HTML 自己就能看,也带了"📸 保存为图片"按钮。
 
