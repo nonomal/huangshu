@@ -28,9 +28,9 @@
 
 | 工具 | 说明 | 首次安装 | 再次启动 |
 |-----|------|---------|---------|
-| [Skill Hub](tools/skill-hub/) | 本地 Web UI，扫描全机器所有 Claude Skills，可视化编辑、去重、相似检测、版本快照、7 天回收站 | `npm install -g https://github.com/Backtthefuture/skillmanager/raw/main/release/claude-skill-hub.tgz && skill-hub` | `skill-hub` |
+| [Skill Hub](tools/skill-hub/) | 本地 Web UI，扫描全机器所有 Claude Skills，可视化编辑、去重、相似检测、版本快照、7 天回收站 | `npm install -g https://github.com/Backtthefuture/huangshu/raw/main/tools/skill-hub/release/claude-skill-hub.tgz && skill-hub` | `skill-hub` |
 
-> 安装命令走的是独立仓库 [`skillmanager`](https://github.com/Backtthefuture/skillmanager)（npm 不支持从 monorepo 子目录安装），装的是预构建的 tarball（绕开 `npm install -g github:...` 在 npm 11 + node 24 上的悬空软链 bug）。`tools/skill-hub/` 是源码镜像，方便在合集里查阅和贡献。
+> 装的是 `tools/skill-hub/release/claude-skill-hub.tgz` 这个预构建 tarball（绕开 `npm install -g github:...` 在 npm 11 + node 24 上的悬空软链 bug）。每次 skill-hub 源码变更后 tarball 会同步重打。
 >
 > 首次装完会自动启动并打开浏览器；之后任何时候只要在终端敲 `skill-hub` 就能重新启动，或者直接访问 `http://localhost:3456`（如果服务还在跑）。更新到最新版本：再跑一次首次安装的那条命令即可。
 
