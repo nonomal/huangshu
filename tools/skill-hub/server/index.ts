@@ -63,16 +63,22 @@ startWatcher((event) => {
 })
 
 // Serve built frontend static files (production mode)
-// Try several possible locations for the dist/web directory
+// Try several possible locations for the dist/web directory. Must check both
+// index.html AND assets/ so we don't accidentally pick the source web/ dir in
+// dev mode — the source index.html references /src/main.tsx which only works
+// under vite, and serving it from fastify leaves the page blank.
 const candidates = [
-  path.resolve(__dirname, '../web'),          // dist/server/ → dist/web/
+  path.resolve(__dirname, '../web'),          // dist/server/ → dist/web/ (production layout)
   path.resolve(__dirname, '../../dist/web'),   // server/ (dev) → project/dist/web/
   path.resolve(process.cwd(), 'dist/web'),     // cwd/dist/web/
 ]
 
 const staticRoot = candidates.find((p) => {
   try {
-    return fs.existsSync(path.join(p, 'index.html'))
+    return (
+      fs.existsSync(path.join(p, 'index.html')) &&
+      fs.existsSync(path.join(p, 'assets'))
+    )
   } catch {
     return false
   }

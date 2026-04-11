@@ -1,4 +1,4 @@
-import { SourceBadge, ScopeBadge } from './SourceBadge'
+import { SourceBadge, ScopeBadge, AgentBadge } from './SourceBadge'
 import type { Skill } from '../hooks/useSkills'
 
 interface SkillCardProps {
@@ -40,7 +40,8 @@ export function SkillCard({ skill, onClick }: SkillCardProps) {
         <h3 className="text-sm font-semibold text-slate-100 group-hover:text-indigo-400 transition-colors truncate">
           /{name}
         </h3>
-        <div className="flex gap-1 shrink-0">
+        <div className="flex gap-1 shrink-0 items-center">
+          <AgentBadge agent={skill.agent} />
           <ScopeBadge scope={skill.scope} />
         </div>
       </div>

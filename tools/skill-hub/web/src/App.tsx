@@ -21,6 +21,7 @@ function App() {
   const [view, setView] = useState<View>('skills')
   const [scopeFilter, setScopeFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
+  const [agentFilter, setAgentFilter] = useState('all')
   const [projectFilter, setProjectFilter] = useState('all')
   const [conflictOnly, setConflictOnly] = useState(false)
   const [search, setSearch] = useState('')
@@ -73,16 +74,17 @@ function App() {
   )
 
   const applyFilters = useCallback(
-    (overrides?: { scope?: string; source?: string; project?: string; search?: string; conflictOnly?: boolean }) => {
+    (overrides?: { scope?: string; source?: string; agent?: string; project?: string; search?: string; conflictOnly?: boolean }) => {
       filterSkills({
         scope: overrides?.scope ?? scopeFilter,
         source: overrides?.source ?? sourceFilter,
+        agent: overrides?.agent ?? agentFilter,
         project: overrides?.project ?? projectFilter,
         search: overrides?.search ?? search,
         conflictOnly: overrides?.conflictOnly ?? conflictOnly,
       })
     },
-    [filterSkills, scopeFilter, sourceFilter, projectFilter, search, conflictOnly],
+    [filterSkills, scopeFilter, sourceFilter, agentFilter, projectFilter, search, conflictOnly],
   )
 
   const handleScopeChange = (v: string) => {
@@ -94,6 +96,11 @@ function App() {
   const handleSourceChange = (v: string) => {
     setSourceFilter(v)
     applyFilters({ source: v })
+  }
+
+  const handleAgentChange = (v: string) => {
+    setAgentFilter(v)
+    applyFilters({ agent: v })
   }
 
   const handleProjectChange = (v: string) => {
@@ -305,9 +312,11 @@ function App() {
                   projects={projects}
                   scopeFilter={scopeFilter}
                   sourceFilter={sourceFilter}
+                  agentFilter={agentFilter}
                   projectFilter={projectFilter}
                   onScopeChange={handleScopeChange}
                   onSourceChange={handleSourceChange}
+                  onAgentChange={handleAgentChange}
                   onProjectChange={handleProjectChange}
                 />
               )}
