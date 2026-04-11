@@ -44,23 +44,6 @@ export function SkillCard({ skill, onClick, selectMode, selected, onSelectToggle
             : 'border-slate-800/50 bg-slate-900/40 opacity-60 hover:opacity-80'
         }`}
     >
-      {/* Selection checkbox overlay */}
-      {selectMode && (
-        <div
-          className={`absolute top-2 left-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-            selected
-              ? 'bg-indigo-600 border-indigo-600'
-              : 'bg-slate-900/80 border-slate-600 group-hover:border-slate-400'
-          }`}
-        >
-          {selected && (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-white">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          )}
-        </div>
-      )}
-
       {/* Conflict indicator */}
       {skill.hasConflict && (
         <div className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-slate-900" />
@@ -68,9 +51,26 @@ export function SkillCard({ skill, onClick, selectMode, selected, onSelectToggle
 
       {/* Header */}
       <div className="flex items-start justify-between mb-2 gap-2">
-        <h3 className="text-sm font-semibold text-slate-100 group-hover:text-indigo-400 transition-colors truncate">
-          /{name}
-        </h3>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {selectMode && (
+            <div
+              className={`w-4 h-4 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
+                selected
+                  ? 'bg-indigo-600 border-indigo-600'
+                  : 'bg-slate-900/80 border-slate-600 group-hover:border-slate-400'
+              }`}
+            >
+              {selected && (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="text-white">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+          )}
+          <h3 className="text-sm font-semibold text-slate-100 group-hover:text-indigo-400 transition-colors truncate">
+            /{name}
+          </h3>
+        </div>
         <div className="flex gap-1 shrink-0 items-center">
           <AgentBadge agent={skill.agent} />
           <ScopeBadge scope={skill.scope} />
