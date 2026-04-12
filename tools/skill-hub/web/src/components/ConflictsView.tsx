@@ -15,36 +15,36 @@ interface Props {
 export function ConflictsView({ conflicts, onSkillClick, onDelete, busy, selectMode, selectedIds, onSelectToggle, onBulkDelete }: Props) {
   const total = conflicts.reduce((n, g) => n + g.skills.length, 0)
   const selectedCount = selectedIds?.size ?? 0
-  const allConflictIds = conflicts.flatMap((g) => g.skills.map((s) => s.id))
-  const allSelected = allConflictIds.length > 0 && allConflictIds.every((id) => selectedIds?.has(id))
+  const allConflictSkills = conflicts.flatMap((g) => g.skills)
+  const allSelected = allConflictSkills.length > 0 && allConflictSkills.every((s) => selectedIds?.has(s.id))
+  const nonGlobalSkills = allConflictSkills.filter((s) => s.scope !== 'global')
+  const allNonGlobalSelected = nonGlobalSkills.length > 0 && nonGlobalSkills.every((s) => selectedIds?.has(s.id))
 
   const handleSelectAll = () => {
     if (!onSelectToggle) return
-    allConflictIds.forEach((id) => {
-      const skill = conflicts.flatMap((g) => g.skills).find((s) => s.id === id)
-      if (skill) onSelectToggle(skill)
-    })
+    if (allSelected) {
+      allConflictSkills.forEach((skill) => {
+        if (selectedIds?.has(skill.id)) onSelectToggle(skill)
+      })
+    } else {
+      allConflictSkills.forEach((skill) => {
+        if (!selectedIds?.has(skill.id)) onSelectToggle(skill)
+      })
+    }
   }
 
   const handleSelectNonGlobal = () => {
     if (!onSelectToggle) return
-    const nonGlobalIds = conflicts.flatMap((g) => g.skills.filter((s) => s.scope !== 'global').map((s) => s.id))
-    const allNonGlobalSelected = nonGlobalIds.length > 0 && nonGlobalIds.every((id) => selectedIds?.has(id))
-    nonGlobalIds.forEach((id) => {
-      const skill = conflicts.flatMap((g) => g.skills).find((s) => s.id === id)
-      if (skill) {
-        // If all are selected, deselect; otherwise select those not yet selected
-        if (allNonGlobalSelected) {
-          if (selectedIds?.has(id)) onSelectToggle(skill)
-        } else {
-          if (!selectedIds?.has(id)) onSelectToggle(skill)
-        }
-      }
-    })
+    if (allNonGlobalSelected) {
+      nonGlobalSkills.forEach((skill) => {
+        if (selectedIds?.has(skill.id)) onSelectToggle(skill)
+      })
+    } else {
+      nonGlobalSkills.forEach((skill) => {
+        if (!selectedIds?.has(skill.id)) onSelectToggle(skill)
+      })
+    }
   }
-
-  const nonGlobalIds = conflicts.flatMap((g) => g.skills.filter((s) => s.scope !== 'global').map((s) => s.id))
-  const allNonGlobalSelected = nonGlobalIds.length > 0 && nonGlobalIds.every((id) => selectedIds?.has(id))
 
   return (
     <div>
@@ -208,11 +208,11 @@ function ConflictRow({
       {selectMode && onSelectToggle && (
         <button
           onClick={() => onSelectToggle(skill)}
-          className="mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer"
-          style={{
-            background: selected ? 'var(--color-indigo-500, #6366f1)' : 'transparent',
-            borderColor: selected ? 'var(--color-indigo-500, #6366f1)' : 'var(--color-slate-600, #475569)',
-          }}
+          className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer ${
+            selected
+              ? 'bg-indigo-500 border-indigo-500'
+              : 'bg-transparent border-slate-600'
+          }`}
         >
           {selected && (
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
