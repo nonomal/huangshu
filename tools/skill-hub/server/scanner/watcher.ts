@@ -9,6 +9,11 @@ const homedir = os.homedir()
 export type WatchCallback = (event: { type: string; path: string }) => void
 
 let watcher: chokidar.FSWatcher | null = null
+const ignoredPathNames = new Set(['node_modules', '.git'])
+
+function isIgnoredPath(filePath: string): boolean {
+  return filePath.split(/[\\/]+/).some((part) => ignoredPathNames.has(part))
+}
 
 export function startWatcher(callback: WatchCallback): void {
   if (watcher) return
@@ -35,6 +40,11 @@ export function startWatcher(callback: WatchCallback): void {
     ignoreInitial: true,
     persistent: true,
     followSymlinks: true,
+    ignored: isIgnoredPath,
+    awaitWriteFinish: {
+      stabilityThreshold: 300,
+      pollInterval: 100,
+    },
   })
 
   watcher
@@ -47,7 +57,9 @@ export function startWatcher(callback: WatchCallback): void {
 
 export function stopWatcher(): void {
   if (watcher) {
-    watcher.close()
+    void watcher.close().catch((err) => {
+      console.warn('Failed to close file watcher:', err)
+    })
     watcher = null
   }
 }

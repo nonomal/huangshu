@@ -11,7 +11,7 @@ import { versionRoutes } from './routes/versions.js'
 import { similarityRoutes } from './routes/similarity.js'
 import { trashRoutes } from './routes/trash.js'
 import { syncRoutes } from './routes/sync.js'
-import { startWatcher } from './scanner/watcher.js'
+import { startWatcher, stopWatcher, type WatchCallback } from './scanner/watcher.js'
 import { invalidateCache } from './routes/skills.js'
 import { fullScan } from './scanner/discovery.js'
 import { purgeExpired as purgeExpiredTrash } from './trash/store.js'
@@ -37,13 +37,6 @@ app.get('/api/health', async () => ({ status: 'ok' }))
 // WebSocket for real-time updates
 const wsClients = new Set<WebSocket>()
 
-app.register(async function (fastify) {
-  fastify.get('/ws', { websocket: true }, (socket) => {
-    wsClients.add(socket)
-    socket.on('close', () => wsClients.delete(socket))
-  })
-})
-
 function broadcast(data: any) {
   const msg = JSON.stringify(data)
   for (const ws of wsClients) {
@@ -53,15 +46,34 @@ function broadcast(data: any) {
   }
 }
 
-// Start file watcher
+// File watcher only runs while at least one Web UI client is connected.
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-startWatcher((event) => {
+const watchCallback: WatchCallback = (event) => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     invalidateCache()
     broadcast({ type: 'change', event })
   }, 500)
+}
+
+app.register(async function (fastify) {
+  fastify.get('/ws', { websocket: true }, (socket) => {
+    const shouldStartWatcher = wsClients.size === 0
+    wsClients.add(socket)
+
+    if (shouldStartWatcher) {
+      invalidateCache()
+      startWatcher(watchCallback)
+    }
+
+    socket.on('close', () => {
+      wsClients.delete(socket)
+      if (wsClients.size === 0) {
+        stopWatcher()
+      }
+    })
+  })
 })
 
 // Serve built frontend static files (production mode)
@@ -169,7 +181,7 @@ try {
   }
   console.log(`🔍 Debug:    \x1b[36m${url}/api/debug\x1b[0m`)
   console.log(scanSummary)
-  console.log(`👀 File watcher active`)
+  console.log(`👀 File watcher starts when Web UI connects`)
   console.log(`\x1b[90m💡 下次启动直接敲: \x1b[0m\x1b[36mskill-hub\x1b[0m\x1b[90m  (或访问 ${url})\x1b[0m\n`)
 
   if (staticRoot && process.env.SKILL_HUB_NO_OPEN !== '1') {
