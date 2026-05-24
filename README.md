@@ -4,26 +4,50 @@
 
 ## Skill 目录
 
-| Skill | 说明 | 使用场景 | 一键安装（Claude Code） |
-|-------|------|---------|---------|
-| [私董会（advisory-board）](skills/advisory-board/) | 12 位顶级思想家组成的商业决策智囊团 | 面临重大商业决策，需要多视角碰撞 | `npx skills add Backtthefuture/huangshu --skill advisory-board -a claude-code -g -y` |
-| [Social-SBTI（social-sbti）](skills/social-sbti/) | 基于社交媒体公开动态生成恶搞人格卡（27 型 × 15 维） | 给自己或公开公众人物做娱乐向人格画像 | `npx skills add Backtthefuture/huangshu --skill social-sbti -a claude-code -g -y` |
-| [视频逐字稿（video-transcript）](skills/video-transcript/) | B 站/抖音/小红书/YouTube 视频自动转严格逐字稿（豆包视频理解，headless 后台抓取，长视频自动分段） | 把视频内容转成可搜索/可引用的文字稿，做笔记、做素材、做总结 | `bash <(curl -fsSL https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/video-transcript/bootstrap.sh)` |
+| Skill | 它能干什么 | 适合什么时候用 |
+|-------|------------|----------------|
+| [私董会（advisory-board）](skills/advisory-board/) | 请 12 位顶级思想家从不同角度帮你拆问题 | 面临重大商业决策，需要多视角碰撞 |
+| [Social-SBTI（social-sbti）](skills/social-sbti/) | 根据公开社交动态生成娱乐向人格画像卡 | 给自己或公开公众人物做娱乐向人格画像 |
+| [视频逐字稿（video-transcript）](skills/video-transcript/) | 把 B 站/抖音/小红书/YouTube 视频转成可搜索、可引用的逐字稿 | 做笔记、做素材、做总结 |
+| [公众号兜底抓取（wechat-article-fallback-ladder）](skills/wechat-article-fallback-ladder/) | 公众号文章抓不到全文时，自动保存多路抓取证据，并说明证据边界 | 读公众号、抓微信链接、追溯来源 |
 
-> 点击 Skill 名称进入对应目录，里面有**核心特色 / 触发方式 / 运行效果 / 手动安装**的完整说明。
->
-> **video-transcript 用 `bootstrap.sh` 而不是 `npx skills add`** —— 因为它需要装系统依赖（ffmpeg / Chromium）和配豆包 API Key，引导脚本会一条龙搞定。如果你只想拉 skill 文件不要安装向导，也可以用 `npx skills add Backtthefuture/huangshu --skill video-transcript -a claude-code -g -y`，然后手动跑 `~/.claude/skills/video-transcript/install.sh`。
+点击 Skill 名称可以看完整说明。新手只需要看下面这段安装命令。
 
-**⚠️ `-a claude-code` 这个参数不能省**。`npx skills add` 是 [Vercel Labs `skills`](https://github.com/vercel-labs/skills) CLI，支持 40+ AI 编程助手，**默认装到通用路径 `.agents/skills/`**，而 Claude Code 只扫 `~/.claude/skills/`（全局）和 `.claude/skills/`（项目）两个位置。不加 `-a claude-code` 的话，skill 装了但 Claude Code 看不见。
+## 小白安装
 
-**关于 `npx skills add` 命令：**
+先打开 macOS 的「终端」，复制对应的一行命令，粘贴进去回车。安装完后，完全退出 Claude Code 再重新打开。
 
-- `--skill <name>` — 直接安装指定 Skill，跳过交互式选单
-- `-a claude-code` — 告诉 CLI 目标是 Claude Code（走 `.claude/skills/` 路径）
-- `-g` — 装到全局 `~/.claude/skills/`（所有项目可用）；不加就装到当前项目的 `.claude/skills/`
-- `-y` — 跳过确认提示，完全非交互
+### 私董会
 
-命令跑完后，**重启 Claude Code**（完全退出再打开），skill 才会被加载。
+```bash
+npx skills add Backtthefuture/huangshu --skill advisory-board -a claude-code -g -y
+```
+
+### Social-SBTI
+
+```bash
+npx skills add Backtthefuture/huangshu --skill social-sbti -a claude-code -g -y
+```
+
+### 视频逐字稿
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/video-transcript/bootstrap.sh)
+```
+
+### 公众号兜底抓取
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/wechat-article-fallback-ladder/bootstrap.sh)
+```
+
+## 这些命令是什么意思
+
+普通 Skill 用 `npx skills add ...` 安装：它的作用就是把指定 Skill 下载到 Claude Code 能看见的位置。
+
+需要额外配置的 Skill 用 `bootstrap.sh` 安装：它像一个安装向导，会先下载 Skill，再检查依赖、补配置。比如 `video-transcript` 需要视频处理工具、浏览器引擎和豆包 API Key；`wechat-article-fallback-ladder` 会顺手检查公众号抓取脚本，并在检测到 Codex 时注册到 Codex。
+
+命令里的 `-a claude-code` 不能省。省掉后可能会装到别的目录，Claude Code 看不见。
 
 ## 🛠️ 工具（Tools）
 
