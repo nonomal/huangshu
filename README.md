@@ -9,7 +9,6 @@
 | [私董会（advisory-board）](skills/advisory-board/) | 请 12 位顶级思想家从不同角度帮你拆问题 | 面临重大商业决策，需要多视角碰撞 |
 | [Social-SBTI（social-sbti）](skills/social-sbti/) | 根据公开社交动态生成娱乐向人格画像卡 | 给自己或公开公众人物做娱乐向人格画像 |
 | [视频逐字稿（video-transcript）](skills/video-transcript/) | 把 B 站/抖音/小红书/YouTube 视频转成可搜索、可引用的逐字稿 | 做笔记、做素材、做总结 |
-| [公众号兜底抓取（wechat-article-fallback-ladder）](skills/wechat-article-fallback-ladder/) | 公众号文章抓不到全文时，自动保存多路抓取证据，并说明证据边界 | 读公众号、抓微信链接、追溯来源 |
 
 点击 Skill 名称可以看完整说明。新手只需要看下面这段安装命令。
 
@@ -35,17 +34,11 @@ npx skills add Backtthefuture/huangshu --skill social-sbti -a claude-code -g -y
 bash <(curl -fsSL https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/video-transcript/bootstrap.sh)
 ```
 
-### 公众号兜底抓取
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Backtthefuture/huangshu/main/skills/wechat-article-fallback-ladder/bootstrap.sh)
-```
-
 ## 这些命令是什么意思
 
 普通 Skill 用 `npx skills add ...` 安装：它的作用就是把指定 Skill 下载到 Claude Code 能看见的位置。
 
-需要额外配置的 Skill 用 `bootstrap.sh` 安装：它像一个安装向导，会先下载 Skill，再检查依赖、补配置。比如 `video-transcript` 需要视频处理工具、浏览器引擎和豆包 API Key；`wechat-article-fallback-ladder` 会顺手检查公众号抓取脚本，并在检测到 Codex 时注册到 Codex。
+需要额外配置的 Skill 用 `bootstrap.sh` 安装：它像一个安装向导，会先下载 Skill，再检查依赖、补配置。比如 `video-transcript` 需要视频处理工具、浏览器引擎和豆包 API Key。
 
 命令里的 `-a claude-code` 不能省。省掉后可能会装到别的目录，Claude Code 看不见。
 
