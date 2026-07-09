@@ -1,6 +1,6 @@
 # video-transcript — 视频逐字稿提取 Skill
 
-把 B 站 / 抖音 / 小红书 / YouTube 视频自动转成**严格逐字稿**（保留口语词、网络梗、停顿）。
+把 B 站 / 抖音 / 小红书 / YouTube / 微信视频号视频自动转成**严格逐字稿**（保留口语词、网络梗、停顿）。
 全程在你电脑后台跑，**不弹窗、不要登录视频网站**。
 
 ---
@@ -21,6 +21,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Backtthefuture/huangshu/main
 5. 跑 `--doctor` 自检
 
 完成后在 Claude Code 里就能用 `/video-transcript <视频链接>`。
+
+如果你只想保存 MP4、不需要逐字稿，先说明"只下载"，agent 会改走 `video-download`，不进入压缩和转录流程。只贴链接或说"处理这个视频"但没说清结果时，agent 应先问你是仅下载还是提取逐字稿。
 
 ### 标准两步安装（与 huangshu 其他 skill 风格一致）
 
@@ -79,7 +81,10 @@ echo "DOUBAO_API_KEY=你的key" > ~/.claude/skills/video-transcript/.env
 - 抖音：`https://www.douyin.com/video/xxx` 或 `https://v.douyin.com/xxx`
 - 小红书：`https://www.xiaohongshu.com/discovery/item/xxx` 或短链 `xhslink.com/xxx`
 - YouTube：`https://youtube.com/watch?v=xxx`
+- 微信视频号：`https://weixin.qq.com/sph/xxx` 或 `channels.weixin.qq.com/...`
 - 本地文件：`/path/to/video.mp4`
+
+微信视频号转录依赖 `video-download` 先把视频保存为本地 MP4，再交给本 skill 压缩和转录。若只下载视频号视频，请直接走 `video-download`。
 
 ### 终端直接跑
 ```bash
@@ -150,7 +155,7 @@ python3 ~/.claude/skills/video-transcript/scripts/transcript.py "<URL>"
 python3 ~/.claude/skills/video-transcript/scripts/transcript.py --doctor
 ```
 
-会逐项检查：ffmpeg / ffprobe / Python / yt-dlp / playwright / chromium / .env / API Key / 模型配置，缺啥说啥。
+会逐项检查：ffmpeg / ffprobe / Python / yt-dlp / playwright / chromium / video-download（视频号可选依赖） / .env / API Key / 模型配置，缺啥说啥。
 
 ### 常见问题
 
@@ -159,6 +164,7 @@ python3 ~/.claude/skills/video-transcript/scripts/transcript.py --doctor
 | `[ERROR] 没找到豆包 API Key` | 检查 `.env` 是否存在并填了 `DOUBAO_API_KEY` |
 | API 报 "模型未授权" / 401 | 火山方舟控制台 → 模型广场 → 给 Doubao-Seed-2.0-pro 点"开通" |
 | 抖音/小红书抓不到视频 | 平台前端可能改版，参考 `FALLBACK.md` 手动方案 |
+| 微信视频号提示找不到 `video-download` | 先安装 `video-download` skill，或把它放在与 `video-transcript` 同级的 skill 目录 |
 | B 站 yt-dlp 报 412 | 正常，已自动 fallback 到 headless 浏览器，不用管 |
 | 长视频被概括而不是逐字 | 已自动分段处理；如仍概括请提 issue 附上 URL |
 | `playwright` 报 chromium 找不到 | `python3 -m playwright install chromium` |
@@ -190,7 +196,7 @@ python3 ~/.claude/skills/video-transcript/scripts/transcript.py --doctor
   ↓
 打印评估表(平台/标题/时长/分段/预估耗时)
   ↓
-下载(复用探测拿到的直链,不重启浏览器)
+下载(复用探测拿到的直链,不重启浏览器;微信视频号先桥接 video-download)
   ↓
 长视频(>8min)切片 → 每段独立压缩(目标 30MB,智能选分辨率)
   ↓

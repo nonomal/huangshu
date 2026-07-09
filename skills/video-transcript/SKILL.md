@@ -1,12 +1,13 @@
 ---
 name: video-transcript
 description: |
-  视频逐字稿提取专家(基于豆包视频理解模型)。支持 B 站 / 抖音 / 小红书 / YouTube 链接或本地视频。全程在用户电脑后台运行(headless),不弹窗、不要求登录视频网站。输出"语义分段 + 段落级时间戳"的严格逐字稿(保留口语词、网络梗、停顿),长视频自动分段处理避免被模型概括。
+  视频逐字稿提取专家(基于豆包视频理解模型)。支持 B 站 / 抖音 / 小红书 / YouTube / 微信视频号链接或本地视频。全程在用户电脑后台运行(headless),不弹窗、不要求登录视频网站。输出"语义分段 + 段落级时间戳"的严格逐字稿(保留口语词、网络梗、停顿),长视频自动分段处理避免被模型概括。
   触发场景:
   - 用户说"出逐字稿"、"提取逐字稿"、"转文字"、"视频转文字"
   - 用户说"听写视频"、"提取视频文案"、"视频字幕"
   - 用户使用 /video-transcript 命令
-  - 用户贴一个视频链接(B站 / 抖音 / 小红书 / YouTube),意图是要文字版
+  - 用户贴一个视频链接(B站 / 抖音 / 小红书 / YouTube / 微信视频号),意图是要文字版
+  - 用户只贴视频链接或说"处理这个视频"但没说清下载还是转录时,先询问意图
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 user-invocable: true
 ---
@@ -21,9 +22,14 @@ user-invocable: true
 
 ```bash
 VT_HOME="$(
-  for d in "$HOME/.claude/skills/video-transcript" \
+  for d in "$HOME/.agents/skills/video-transcript" \
+           "$HOME/.Codex/skills/video-transcript" \
+           "$HOME/.codex/skills/video-transcript" \
+           "$HOME/.claude/skills/video-transcript" \
+           "$(pwd)/.Codex/skills/video-transcript" \
            "$(pwd)/.claude/skills/video-transcript" \
            "$(pwd)/skills/video-transcript" \
+           "$HOME/.Codex/plugins/video-transcript/video-transcript" \
            "$HOME/.claude/plugins/video-transcript/video-transcript"; do
     [ -f "$d/SKILL.md" ] && echo "$d" && break
   done
@@ -35,7 +41,36 @@ echo "VT_HOME=$VT_HOME"
 如果输出为空,说明 skill 安装位置非标准。让用户给出路径,然后手工 `export VT_HOME=<路径>`。
 之后**所有命令**都通过 `"$VT_HOME/scripts/transcript.py"`,不要用相对路径或绝对路径硬编码。
 
-## 阶段 1 · 依赖体检(首次/可疑时)
+## 阶段 1 · 意图确认与分流(必须先做)
+
+在跑任何下载/转录命令前,先判断用户要的是哪一种:
+
+| 用户意图 | 处理 |
+|---|---|
+| 明确说"提取逐字稿"、"转文字"、"视频文案"、"字幕" | 继续本 skill 的转录流程 |
+| 明确说"只下载"、"下载视频"、"保存 MP4"、"不用转录" | 不跑 `transcript.py`;改调用 `video-download` |
+| 只贴链接、说"处理这个视频"、或没有说清结果形态 | 先问:"你是只要下载视频,还是要提取逐字稿?" 等用户确认后再执行 |
+
+仅下载时,定位并调用 `video-download`:
+
+```bash
+VD_HOME="$(
+  for d in "$HOME/.agents/skills/video-download" \
+           "$HOME/.Codex/skills/video-download" \
+           "$HOME/.codex/skills/video-download" \
+           "$HOME/.claude/skills/video-download" \
+           "$(pwd)/skills/video-download"; do
+    [ -f "$d/SKILL.md" ] && echo "$d" && break
+  done
+)"
+export VD_HOME
+echo "VD_HOME=$VD_HOME"
+python3 "$VD_HOME/scripts/download_video.py" "<URL或本地路径>" --json
+```
+
+仅下载完成后,按 `video-download` 的验收标准返回 durable MP4 路径、metadata 路径、时长、分辨率、视频/音频编码和文件大小;不要再进入压缩或豆包转录。
+
+## 阶段 2 · 依赖体检(首次/可疑时)
 
 第一次跑或者遇到报错时,先做体检:
 
@@ -48,11 +83,11 @@ python3 "$VT_HOME/scripts/transcript.py" --doctor
   ```bash
   bash "$VT_HOME/install.sh"
   ```
-- 体检全 ✓ 才进入阶段 2。
+- 体检全 ✓ 才进入阶段 3。
 
-## 阶段 2 · 触发方式与执行
+## 阶段 3 · 触发方式与执行
 
-用户给视频链接(URL 或本地路径)就直接跑:
+用户确认要逐字稿后,给视频链接(URL 或本地路径)就直接跑:
 
 ```bash
 python3 "$VT_HOME/scripts/transcript.py" "<URL或本地路径>"
@@ -63,11 +98,13 @@ python3 "$VT_HOME/scripts/transcript.py" "<URL或本地路径>"
 - 抖音:`https://www.douyin.com/video/xxx`、`v.douyin.com/xxx`、`douyin.com/jingxuan?modal_id=xxx`
 - 小红书:`xiaohongshu.com/discovery/item/xxx`、`xiaohongshu.com/explore/xxx`、`xhslink.com/xxx`
 - YouTube:`youtube.com/watch?v=xxx`、`youtu.be/xxx`
+- 微信视频号:`https://weixin.qq.com/sph/xxx`、`channels.weixin.qq.com/finder-preview/pages/sph?id=xxx`
 - 本地视频文件路径
 
 脚本自动:
 0. **探测** — 启动 headless 浏览器,拿标题、时长、视频/音频直链;打印 📊 评估表 + 预估耗时
 1. **下载** — 复用探测拿到的直链(不重启浏览器);B 站走 dash 流(分别下载 video/audio + ffmpeg 合并);其他平台直接 mp4
+   - 微信视频号会先调用 `video-download` 下载为本地 MP4,再进入压缩和转录流程;解析方式由 `video-download/.env` 的 `WECHAT_RESOLVER` 决定
 2. **长视频切片** — 总时长 > 8min 自动切成 6min/段,避免被模型概括成摘要
 3. **压缩** — ffmpeg,目标 30MB;按时长自动选分辨率,一次到位
 4. **转录** — 豆包视频理解 API,严格逐字 prompt(保留口语词、网络梗、停顿)
@@ -103,10 +140,10 @@ python3 "$VT_HOME/scripts/transcript.py" "<URL或本地路径>"
 - ❌ 只展示前几段就省略
 - ❌ 总结/精简内容(逐字稿要逐字展示)
 
-## 阶段 3 · 输出去处
+## 阶段 4 · 输出去处
 
 脚本会**两个去处同时输出**:
-1. **stdout 直出**完整 Markdown 全文 — 供 agent 复述给用户(见阶段 2 第 2 条强制要求)
+1. **stdout 直出**完整 Markdown 全文 — 供 agent 复述给用户(见阶段 3 第 2 条强制要求)
 2. **落盘**到 `$VT_HOME/outputs/<标题>_transcript.md` — skill 自管,所有产出归一处
 
 **取消落盘**:`--no-save`
@@ -146,7 +183,7 @@ python3 "$VT_HOME/scripts/transcript.py" "<URL或本地路径>"
 - **逐字转录**:保留口语词("呃""那""啊""就是")、网络梗、停顿,不总结、不改写
 - **无人声段落**:用 `_(此处无人声,XX秒)_` 标注
 
-## 阶段 4 · 异常处理
+## 阶段 5 · 异常处理
 
 | 场景 | 处理 |
 |---|---|
@@ -155,8 +192,22 @@ python3 "$VT_HOME/scripts/transcript.py" "<URL或本地路径>"
 | API 401 / "模型未授权" | 火山方舟控制台 → 模型广场 → 给 Doubao-Seed-2.0-pro 点"开通" |
 | 抖音图文笔记(note 链接) | 提示用户不支持图文,仅支持视频 |
 | 平台前端改版导致抓取失败 | 看 `$VT_HOME/FALLBACK.md` 走人工兜底 |
+| 微信视频号提示缺少 video-download | 先安装 `video-download` skill,或把它放在与 `video-transcript` 同级的 skill 目录 |
+| 微信视频号提示缺少 SPH_COOKIE/YUANBAO_COOKIE | 当前使用的是 `WECHAT_RESOLVER=cookie`;可在 `video-download/.env` 配置 Cookie,或明确改为 `WECHAT_RESOLVER=public-worker` |
 | 长视频被模型概括而非逐字 | 已自动处理(>8min 切片);仍出现请反馈 |
 | 压缩后视频仍 > 50MB | 脚本自动迭代降码率/分辨率(最多 4 轮) |
+
+视频号解析方式由 `video-download/.env` 决定。当前如果选择公共 Worker,写入:
+
+```env
+WECHAT_RESOLVER=public-worker
+```
+
+也可临时显式覆盖:
+
+```bash
+VIDEO_DOWNLOAD_WECHAT_RESOLVER=public-worker python3 "$VT_HOME/scripts/transcript.py" "https://weixin.qq.com/sph/xxx"
+```
 
 ## 命令行选项
 

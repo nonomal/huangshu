@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 视频逐字稿提取工具(简化版)
-- 支持B站/YouTube/小红书/抖音链接 或 本地视频文件
+- 支持B站/YouTube/小红书/抖音/微信视频号链接 或 本地视频文件
 - 下载 + 压缩 + 豆包原生视频理解
 - 只输出"语义分段 + 段落级时间戳"的 Markdown 逐字稿
 """
@@ -149,12 +149,77 @@ def detect_platform(url):
         return 'xiaohongshu'
     elif 'douyin.com' in url_lower or 'v.douyin.com' in url_lower:
         return 'douyin'
+    elif 'weixin.qq.com/sph' in url_lower or 'channels.weixin.qq.com' in url_lower:
+        return 'wechat_channels'
     return 'unknown'
 
 
 def is_browser_only_platform(url):
     # B 站 yt-dlp 412 概率高,默认也走 headless;youtube 走 yt-dlp
     return detect_platform(url) in ('xiaohongshu', 'douyin', 'bilibili')
+
+
+def find_video_download_script():
+    candidates = [
+        os.path.join(os.path.expanduser("~"), ".agents", "skills", "video-download", "scripts", "download_video.py"),
+        os.path.join(os.path.expanduser("~"), ".Codex", "skills", "video-download", "scripts", "download_video.py"),
+        os.path.join(os.path.expanduser("~"), ".codex", "skills", "video-download", "scripts", "download_video.py"),
+        os.path.join(os.path.expanduser("~"), ".claude", "skills", "video-download", "scripts", "download_video.py"),
+        os.path.join(os.path.dirname(SKILL_DIR), "video-download", "scripts", "download_video.py"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def _run_video_download_json(args, timeout=900):
+    script = find_video_download_script()
+    if not script:
+        raise RuntimeError("找不到 video-download/scripts/download_video.py")
+    cmd = ["python3", script] + args + ["--json"]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    if r.returncode != 0:
+        err = ""
+        try:
+            data = json.loads((r.stdout or "").strip())
+            err = data.get("error") or ""
+        except Exception:
+            err = (r.stderr or r.stdout or "").strip().splitlines()[-1] if (r.stderr or r.stdout).strip() else ""
+        raise RuntimeError(f"video-download 失败: {err or '未知错误'}")
+    try:
+        data = json.loads(r.stdout.strip())
+    except json.JSONDecodeError:
+        raise RuntimeError("video-download 未返回 JSON")
+    if not data.get("ok"):
+        raise RuntimeError(f"video-download 失败: {data.get('error') or '未知错误'}")
+    return data
+
+
+def probe_via_video_download(url):
+    args = [url, "--probe"]
+    resolver = os.getenv("VIDEO_DOWNLOAD_WECHAT_RESOLVER")
+    if resolver:
+        args += ["--wechat-resolver", resolver]
+    data = _run_video_download_json(args, timeout=80)
+    return {
+        "platform": data.get("platform") or "wechat_channels",
+        "title": data.get("title") or "",
+        "duration": int(data.get("duration") or 0),
+        "cached_info": None,
+    }
+
+
+def download_via_video_download(url):
+    args = [url]
+    resolver = os.getenv("VIDEO_DOWNLOAD_WECHAT_RESOLVER")
+    if resolver:
+        args += ["--wechat-resolver", resolver]
+    data = _run_video_download_json(args, timeout=1200)
+    path = data.get("path")
+    if not path or not os.path.exists(path):
+        raise RuntimeError("video-download 未返回有效本地视频路径")
+    return path, data.get("title") or ""
 
 
 def get_video_info(video_path):
@@ -655,7 +720,9 @@ def probe_video(input_path):
     """
     if is_url(input_path):
         platform = detect_platform(input_path)
-        if platform in ("xiaohongshu", "douyin", "bilibili"):
+        if platform == "wechat_channels":
+            return probe_via_video_download(input_path)
+        elif platform in ("xiaohongshu", "douyin", "bilibili"):
             # 调 headless 提取器,顺便缓存视频/音频 URL,后续 download 不再重启浏览器
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             from platform_extractor import extract as platform_extract
@@ -687,7 +754,7 @@ def estimate_processing_time(duration, platform):
     if not duration or duration <= 0:
         return None, 1
     n_segs = math.ceil(duration / SEGMENT_SECONDS) if duration > SEGMENT_THRESHOLD_SEC else 1
-    headless_overhead = 10 if platform in ("xiaohongshu", "douyin", "bilibili") else 5
+    headless_overhead = 10 if platform in ("xiaohongshu", "douyin", "bilibili", "wechat_channels") else 5
     download_sec = duration * 0.4
     compress_sec = n_segs * 12
     api_sec = n_segs * 30
@@ -719,6 +786,7 @@ def print_probe_report(meta, est_sec, n_segs):
     platform_zh = {
         "xiaohongshu": "小红书", "douyin": "抖音",
         "bilibili": "B 站", "youtube": "YouTube",
+        "wechat_channels": "微信视频号",
         "local": "本地文件", "unknown": "未知平台",
     }.get(meta["platform"], meta["platform"])
 
@@ -772,7 +840,16 @@ def run(input_path, title=None, target_mb=None, output_dir=None, save_md=True):
 
     # ── Step 1: 下载 ──
     if is_url(input_path):
-        if is_browser_only_platform(input_path):
+        if meta["platform"] == "wechat_channels":
+            print(f"\n[Step 1/3] 调用 video-download 下载视频号到本地", file=sys.stderr)
+            try:
+                video_path, dl_title = download_via_video_download(input_path)
+                if not title and dl_title:
+                    title = dl_title
+            except RuntimeError as e:
+                print(f"[ERROR] {e}", file=sys.stderr)
+                sys.exit(1)
+        elif is_browser_only_platform(input_path):
             print(f"\n[Step 1/3] 后台浏览器抓取直链 + 下载", file=sys.stderr)
             video_path, _ = download_via_browser(input_path, cached_info=cached_info)
         else:
@@ -927,6 +1004,13 @@ def doctor():
         issues.append("pip install --break-system-packages playwright")
         issues.append("python3 -m playwright install chromium")
 
+    # video-download(微信视频号下载桥接)
+    vd_script = find_video_download_script()
+    if vd_script:
+        print(f"  ✓ video-download: {vd_script}")
+    else:
+        print("  ⚠ video-download 未安装(仅影响微信视频号转录和仅下载分流)")
+
     # .env + API Key
     if os.path.exists(ENV_FILE):
         print(f"  ✓ .env 文件: {ENV_FILE}")
@@ -958,7 +1042,7 @@ def main():
         description="视频逐字稿提取工具(豆包视频理解)"
     )
     parser.add_argument("input", nargs="?",
-                        help="视频URL(B站/YouTube/抖音/小红书) 或 本地文件路径;--doctor 时不需要")
+                        help="视频URL(B站/YouTube/抖音/小红书/微信视频号) 或 本地文件路径;--doctor 时不需要")
     parser.add_argument("--title", default=None, help="视频标题(用于文档头)")
     parser.add_argument("--target-size", type=int, default=TARGET_SIZE_MB,
                         help=f"压缩目标大小(MB),默认{TARGET_SIZE_MB}")

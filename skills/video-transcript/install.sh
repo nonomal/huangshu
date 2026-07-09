@@ -87,7 +87,11 @@ fi
 
 # ── Step 3: pip 装 yt-dlp + playwright ─────────────────
 step 3 5 "安装 Python 工具"
-PIP_FLAGS="--break-system-packages --quiet"
+if python3 -m pip install --help 2>/dev/null | grep -q -- '--break-system-packages'; then
+  PIP_FLAGS="--break-system-packages --quiet"
+else
+  PIP_FLAGS="--user --quiet"
+fi
 info "yt-dlp ..."
 python3 -m pip install $PIP_FLAGS --upgrade yt-dlp
 ok "yt-dlp"
